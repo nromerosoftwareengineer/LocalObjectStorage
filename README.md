@@ -14,16 +14,32 @@ Micronaut Java service for staged file uploads backed by PostgreSQL.
 Set these environment variables if you are not using the defaults:
 
 ```bash
-export JDBC_URL=jdbc:postgresql://localhost:5432/local_object_storage
+export JDBC_URL=jdbc:postgresql://localhost:5433/local_object_storage
 export JDBC_USER=postgres
 export JDBC_PASSWORD=postgres
 ```
+
+The defaults assume your local PostgreSQL instance has a `postgres` role and a `local_object_storage` database. If your local setup uses a different user, set `JDBC_USER` and `JDBC_PASSWORD` before starting the app.
+
+Start PostgreSQL with Docker Compose if you do not already have a local instance:
+
+```bash
+docker compose up -d
+```
+
+That starts PostgreSQL on `localhost:5433` with:
+
+- database: `local_object_storage`
+- user: `postgres`
+- password: `postgres`
 
 Start the service:
 
 ```bash
 mvn compile exec:java
 ```
+
+Open `http://localhost:8080/` for a lightweight drag-and-drop upload client. It uses the same `createUpload` and `upload` APIs exposed by the service.
 
 **IDE import**
 
