@@ -33,7 +33,7 @@ public class FileController {
     @Post("/actions/createUpload")
     public HttpResponse<FileMetadataResponse> createUpload(@Valid @Body CreateUploadRequest request) {
         FileMetadataResponse response = fileService.createUpload(request);
-        return HttpResponse.status(HttpStatus.ACCEPTED)
+        return HttpResponse.status(HttpStatus.CREATED)
             .body(response)
             .header(HttpHeaders.LOCATION, URI.create("/v1/files/" + response.fileId()).toString());
     }

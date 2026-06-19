@@ -19,6 +19,7 @@ public class FileService {
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     private static final String STATUS_COMPLETE = "COMPLETE";
+    private static final UploadValidator UPLOAD_VALIDATOR = new UploadValidator();
 
     private final FileRepository fileRepository;
 
@@ -46,29 +47,10 @@ public class FileService {
 
     @Transactional
     public UploadResponse upload(UUID fileId, long offset, byte[] chunk) {
-        if (offset < 0) {
-            throw new HttpStatusException(HttpStatus.BAD_REQUEST, "offset must be zero or greater");
-        }
-
         StoredFile storedFile = getRequiredFile(fileId);
         byte[] existing = storedFile.getContent() == null ? new byte[0] : storedFile.getContent();
         byte[] incoming = chunk == null ? new byte[0] : chunk;
-
-        if (offset > existing.length) {
-            throw new HttpStatusException(
-                HttpStatus.BAD_REQUEST,
-                "offset cannot skip ahead of currently stored bytes"
-            );
-        }
-
-        long declaredSize = storedFile.getFileSize() == null ? Long.MAX_VALUE : storedFile.getFileSize();
-        long newLogicalSize = Math.max(existing.length, offset + incoming.length);
-        if (newLogicalSize > declaredSize) {
-            throw new HttpStatusException(
-                HttpStatus.BAD_REQUEST,
-                "upload exceeds the declared fileSize"
-            );
-        }
+        UPLOAD_VALIDATOR.validate(offset, existing, incoming, storedFile.getFileSize());
 
         byte[] merged = merge(existing, incoming, (int) offset);
         storedFile.setContent(merged);
@@ -117,15 +99,15 @@ public class FileService {
         return fileRepository.listSummaries()
             .stream()
             .map(summary -> new FileMetadataResponse(
-                summary.getId(),
-                summary.getFileName(),
-                summary.getFileSize(),
-                summary.getFileType(),
-                summary.getStoredSize(),
-                summary.getStatus(),
-                summary.getSha256(),
-                summary.getCreatedAt(),
-                summary.getUpdatedAt()
+                summary.id(),
+                summary.fileName(),
+                summary.fileSize(),
+                summary.fileType(),
+                summary.storedSize(),
+                summary.status(),
+                summary.sha256(),
+                summary.createdAt(),
+                summary.updatedAt()
             ))
             .toList();
     }
@@ -148,8 +130,16 @@ public class FileService {
             storedFile.getUpdatedAt()
         );
     }
+    // create a folder to store objects in a in file within local mac folder
+    // implement chunking
+    // structure main parent -> upload id -> chunk sequence #s
+    // look into streaming request for handling pressure
+    // monitor performance
+    // ask codex to create a grafana dashboard to see activity spikes implement prometous cpu threads and memory with heap not jvm usage
 
     private byte[] merge(byte[] existing, byte[] incoming, int offset) {
+        // experiment with 50 concurrent connections with 10 mb and ask codex to produce a curl command with increments
+        // of 5, 10, 50 .. concurrent users use activity monitor
         int mergedLength = Math.max(existing.length, offset + incoming.length);
         byte[] merged = Arrays.copyOf(existing, mergedLength);
         System.arraycopy(incoming, 0, merged, offset, incoming.length);
@@ -165,4 +155,3 @@ public class FileService {
         }
     }
 }
-

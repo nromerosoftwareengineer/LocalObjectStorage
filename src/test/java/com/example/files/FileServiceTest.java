@@ -93,52 +93,17 @@ class FileServiceTest {
 
     @Test
     void listFilesMapsRepositoryProjection() {
-        StoredFileSummaryView summary = new StoredFileSummaryView() {
-            @Override
-            public UUID getId() {
-                return UUID.fromString("00000000-0000-0000-0000-000000000001");
-            }
-
-            @Override
-            public String getFileName() {
-                return "report.pdf";
-            }
-
-            @Override
-            public Long getFileSize() {
-                return 1024L;
-            }
-
-            @Override
-            public String getFileType() {
-                return "application/pdf";
-            }
-
-            @Override
-            public String getStatus() {
-                return "IN_PROGRESS";
-            }
-
-            @Override
-            public String getSha256() {
-                return "abc123";
-            }
-
-            @Override
-            public Long getStoredSize() {
-                return 800L;
-            }
-
-            @Override
-            public Instant getCreatedAt() {
-                return Instant.parse("2026-06-17T05:00:00Z");
-            }
-
-            @Override
-            public Instant getUpdatedAt() {
-                return Instant.parse("2026-06-17T05:10:00Z");
-            }
-        };
+        StoredFileSummary summary = new StoredFileSummary(
+            UUID.fromString("00000000-0000-0000-0000-000000000001"),
+            "report.pdf",
+            1024L,
+            "application/pdf",
+            "IN_PROGRESS",
+            "abc123",
+            800L,
+            Instant.parse("2026-06-17T05:00:00Z"),
+            Instant.parse("2026-06-17T05:10:00Z")
+        );
         when(fileRepository.listSummaries()).thenReturn(List.of(summary));
 
         List<FileMetadataResponse> responses = fileService.listFiles();

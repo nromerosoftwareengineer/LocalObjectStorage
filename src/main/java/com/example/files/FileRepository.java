@@ -14,17 +14,16 @@ public interface FileRepository extends CrudRepository<StoredFile, UUID> {
     @Query("""
         SELECT
             id,
-            file_name AS fileName,
-            file_size AS fileSize,
-            file_type AS fileType,
+            file_name,
+            file_size,
+            file_type,
             status,
             sha256,
-            COALESCE(octet_length(content), 0) AS storedSize,
-            created_at AS createdAt,
-            updated_at AS updatedAt
+            COALESCE(octet_length(content), 0) AS stored_size,
+            created_at,
+            updated_at
         FROM stored_files
         ORDER BY created_at DESC
         """)
-    List<StoredFileSummaryView> listSummaries();
+    List<StoredFileSummary> listSummaries();
 }
-
