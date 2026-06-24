@@ -13,6 +13,9 @@ import io.micronaut.http.annotation.QueryValue;
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.validation.Validated;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 
 import java.net.URI;
@@ -25,13 +28,53 @@ import java.util.UUID;
 public class FileController {
 
     private final FileService fileService;
-
-    public FileController(FileService fileService) {
+    private final Counter createUploadRequests;
+    private final Counter uploadRequests;
+    private final Counter downloadRequests;
+    private final Counter listRequests;
+    private final DistributionSummary requestedFileSizeBytes;
+    private final DistributionSummary uploadedChunkBytes;
+    private final DistributionSummary downloadedBytes;
+ // TODO abstract metrics here
+    public FileController(FileService fileService, MeterRegistry meterRegistry) {
         this.fileService = fileService;
+        this.createUploadRequests = Counter.builder("file_controller_requests_total")
+            .description("Total FileController requests by operation")
+            .tag("operation", "create_upload")
+            .register(meterRegistry);
+        this.uploadRequests = Counter.builder("file_controller_requests_total")
+            .description("Total FileController requests by operation")
+            .tag("operation", "upload")
+            .register(meterRegistry);
+        this.downloadRequests = Counter.builder("file_controller_requests_total")
+            .description("Total FileController requests by operation")
+            .tag("operation", "download")
+            .register(meterRegistry);
+        this.listRequests = Counter.builder("file_controller_requests_total")
+            .description("Total FileController requests by operation")
+            .tag("operation", "list")
+            .register(meterRegistry);
+        this.requestedFileSizeBytes = DistributionSummary.builder("file_controller_requested_file_size_bytes")
+            .description("Requested final file sizes passed to createUpload")
+            .baseUnit("bytes")
+            .publishPercentileHistogram()
+            .register(meterRegistry);
+        this.uploadedChunkBytes = DistributionSummary.builder("file_controller_uploaded_chunk_bytes")
+            .description("Chunk sizes received by upload")
+            .baseUnit("bytes")
+            .publishPercentileHistogram()
+            .register(meterRegistry);
+        this.downloadedBytes = DistributionSummary.builder("file_controller_downloaded_bytes")
+            .description("Response byte sizes returned by download")
+            .baseUnit("bytes")
+            .publishPercentileHistogram()
+            .register(meterRegistry);
     }
 
     @Post("/actions/createUpload")
     public HttpResponse<FileMetadataResponse> createUpload(@Valid @Body CreateUploadRequest request) {
+        createUploadRequests.increment();
+        requestedFileSizeBytes.record(request.fileSize());
         FileMetadataResponse response = fileService.createUpload(request);
         return HttpResponse.status(HttpStatus.CREATED)
             .body(response)
@@ -44,12 +87,16 @@ public class FileController {
         @QueryValue(defaultValue = "0") long offset,
         @Body byte[] bytes
     ) {
+        uploadRequests.increment();
+        uploadedChunkBytes.record(bytes == null ? 0 : bytes.length);
         return HttpResponse.ok(fileService.upload(fileId, offset, bytes));
     }
 
     @Get("/{fileId}")
     public HttpResponse<byte[]> download(UUID fileId, @QueryValue(defaultValue = "0") long offset) {
+        downloadRequests.increment();
         FileDownload download = fileService.download(fileId, offset);
+        downloadedBytes.record(download.bytes().length);
         return HttpResponse.ok(download.bytes())
             .header(HttpHeaders.CONTENT_TYPE, download.fileType())
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + download.fileName() + "\"")
@@ -60,6 +107,7 @@ public class FileController {
 
     @Get
     public HttpResponse<List<FileMetadataResponse>> listFiles() {
+        listRequests.increment();
         return HttpResponse.ok(fileService.listFiles());
     }
 }

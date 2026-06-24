@@ -24,7 +24,7 @@ The defaults assume your local PostgreSQL instance has a `postgres` role and a `
 Start PostgreSQL with Docker Compose if you do not already have a local instance:
 
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 That starts PostgreSQL on `localhost:5433` with:
@@ -40,6 +40,38 @@ mvn compile exec:java
 ```
 
 Open `http://localhost:8080/` for a lightweight drag-and-drop upload client. It uses the same `createUpload` and `upload` APIs exposed by the service.
+
+**Monitoring**
+
+The app exposes Prometheus metrics at:
+
+```bash
+curl http://localhost:8080/prometheus
+```
+
+Start PostgreSQL, Prometheus, and Grafana:
+
+```bash
+docker-compose up -d
+```
+
+Then start the API:
+
+```bash
+mvn compile exec:java
+```
+
+Open:
+
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+Grafana login:
+
+- user: `admin`
+- password: `admin`
+
+The provisioned dashboard is named `FileController API` and tracks the `/v1/files` routes plus custom `file_controller_*` metrics for request counts, upload/download bytes, payload sizes, CPU, JVM memory, and threads.
 
 **IDE import**
 
